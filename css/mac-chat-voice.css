@@ -1,0 +1,757 @@
+/* ---------- MaC Chatbot Trigger & Panel (robot trigger + liquid glass chat UI) ---------- */
+    .social-btn.mac-chat-trigger {
+      appearance: none;
+      -webkit-appearance: none;
+      border: 0;
+      padding: 0;
+      cursor: pointer;
+      font: inherit;
+      color: #fff;
+      --lamp-on: 0;
+    }
+
+    .social-btn.mac-chat-trigger.is-online { --lamp-on: 1; }
+
+    .mac-chat-trigger-icon {
+      /* robot: 64x72 artwork, kept fully inside the 30px circle */
+      width: 21px;
+      height: 24px;
+      display: block;
+      flex: 0 0 auto;
+      overflow: visible;
+    }
+
+    .social-btn.mac-chat-trigger:focus-visible {
+      outline: 2px solid var(--gold-primary);
+      outline-offset: 4px;
+    }
+
+    /* ---------- Liquid Glass panel ---------- */
+    .mac-chat-panel {
+      --lamp-on: 0;
+      position: fixed;
+      right: 28px;
+      bottom: 28px;
+      z-index: 10020;
+      display: flex;
+      flex-direction: column;
+      isolation: isolate;
+      width: min(400px, calc(100vw - 32px));
+      height: min(600px, calc(100dvh - 48px));
+      background:
+        radial-gradient(120% 70% at 10% 0%, rgba(255, 255, 255, .32) 0%, rgba(255, 255, 255, 0) 56%),
+        linear-gradient(160deg, rgba(255, 251, 244, .16) 0%, rgba(244, 234, 218, .07) 55%, rgba(236, 222, 200, .12) 100%);
+      -webkit-backdrop-filter: blur(7px) saturate(170%) brightness(1.03);
+      backdrop-filter: blur(7px) saturate(170%) brightness(1.03);
+      border: 1px solid rgba(255, 255, 255, .58);
+      border-radius: 30px;
+      box-shadow:
+        0 30px 70px rgba(70, 55, 35, .22),
+        0 8px 22px rgba(70, 55, 35, .10),
+        inset 0 1.5px 0 rgba(255, 255, 255, .95),
+        inset 0 -1px 0 rgba(255, 255, 255, .35),
+        inset 1px 0 0 rgba(255, 255, 255, .5),
+        inset -1px 0 0 rgba(255, 255, 255, .3);
+      overflow: hidden;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(14px) scale(.985);
+      transform-origin: bottom right;
+      transition: opacity .25s ease, transform .25s ease, visibility .25s ease;
+    }
+
+    /* ambient color light behind the glass (gold / sky / rose from the site palette) */
+    .mac-chat-panel::before {
+      content: "";
+      position: absolute;
+      inset: -20%;
+      z-index: -1;
+      pointer-events: none;
+      background:
+        radial-gradient(38% 30% at 18% 14%, rgba(232, 196, 140, .26), transparent 70%),
+        radial-gradient(34% 28% at 88% 38%, rgba(162, 196, 237, .20), transparent 70%),
+        radial-gradient(40% 32% at 70% 92%, rgba(232, 180, 184, .22), transparent 70%),
+        radial-gradient(30% 24% at 8% 78%, rgba(255, 215, 150, .16), transparent 70%);
+      filter: blur(18px);
+      animation: macGlassDrift 18s ease-in-out infinite alternate;
+    }
+
+    /* specular sheen across the surface */
+    .mac-chat-panel::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      border-radius: inherit;
+      pointer-events: none;
+      background:
+        linear-gradient(118deg, rgba(255, 255, 255, .30) 0%, rgba(255, 255, 255, .06) 22%, transparent 40%),
+        linear-gradient(0deg, rgba(255, 255, 255, .10), transparent 20%);
+    }
+
+    @keyframes macGlassDrift {
+      from { transform: translate3d(-2%, -1%, 0) scale(1); }
+      to { transform: translate3d(2%, 2%, 0) scale(1.06); }
+    }
+
+    .mac-chat-panel.is-open {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0) scale(1);
+    }
+
+    .mac-chat-panel.is-online { --lamp-on: 1; }
+
+    /* --- header (no robot image: title + status only) --- */
+    .mac-chat-header {
+      position: relative;
+      flex: 0 0 auto;
+      padding: 20px 20px 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, .45);
+      box-shadow: 0 1px 0 rgba(140, 112, 66, .06);
+    }
+
+    .mac-chat-brand {
+      display: flex;
+      align-items: center;
+      min-width: 0;
+    }
+
+    .mac-chat-brand-text {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .mac-chat-brand-text strong {
+      color: #2b2520;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .18em;
+    }
+
+    .mac-chat-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #7d6d57;
+      font-family: var(--font-serif);
+      font-size: 13.5px;
+      font-style: italic;
+      letter-spacing: .04em;
+    }
+
+    .mac-chat-status::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #b9ad9c;
+      transition: background .3s ease, box-shadow .3s ease;
+    }
+
+    .mac-chat-panel.is-online .mac-chat-status { color: #3f7d57; }
+    .mac-chat-panel.is-online .mac-chat-status::before {
+      background: #35d07f;
+      box-shadow: 0 0 0 3px rgba(53, 208, 127, .2), 0 0 8px rgba(53, 208, 127, .75);
+    }
+
+    .mac-chat-close {
+      position: relative;
+      display: grid;
+      place-items: center;
+      width: 32px;
+      height: 32px;
+      border: 1px solid rgba(255, 255, 255, .75);
+      border-radius: 50%;
+      background: linear-gradient(160deg, rgba(255, 255, 255, .56), rgba(255, 255, 255, .20));
+      -webkit-backdrop-filter: blur(10px) saturate(160%);
+      backdrop-filter: blur(10px) saturate(160%);
+      color: #4a3f31;
+      font-size: 19px;
+      line-height: 1;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(90, 70, 40, .12), inset 0 1px 0 rgba(255, 255, 255, .95);
+      transition: background .2s ease, transform .2s ease;
+    }
+
+    .mac-chat-close:hover { background: rgba(255, 255, 255, .85); transform: scale(1.06); }
+
+    /* --- conversation --- */
+    .mac-chat-messages {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 11px;
+      padding: 18px 16px 10px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(140, 112, 66, .3) transparent;
+    }
+
+    .mac-chat-message {
+      max-width: 86%;
+      padding: 11px 14px;
+      border-radius: 6px 18px 18px 18px;
+      background: linear-gradient(145deg, rgba(255, 255, 255, .58), rgba(255, 255, 255, .26));
+      -webkit-backdrop-filter: blur(14px) saturate(160%);
+      backdrop-filter: blur(14px) saturate(160%);
+      border: 1px solid rgba(255, 255, 255, .78);
+      box-shadow: 0 6px 18px rgba(90, 70, 40, .10), inset 0 1px 0 rgba(255, 255, 255, .92);
+      color: #3b342c;
+      font-size: 13px;
+      line-height: 1.7;
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+    }
+
+    .mac-chat-message.is-user {
+      align-self: flex-end;
+      border-radius: 18px 6px 18px 18px;
+      background: linear-gradient(145deg, rgba(74, 63, 52, .88), rgba(43, 39, 37, .84));
+      border-color: rgba(255, 255, 255, .18);
+      box-shadow: 0 8px 20px rgba(43, 39, 37, .22), inset 0 1px 0 rgba(255, 255, 255, .22);
+      color: #fbf7f0;
+    }
+
+    .mac-chat-line {
+      align-self: center;
+      color: #8f826d;
+      font-size: 11px;
+      letter-spacing: .04em;
+    }
+
+    .mac-chat-suggestions {
+      flex: 0 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      padding: 4px 16px 12px;
+    }
+
+    .mac-chat-suggestion {
+      padding: 7px 13px;
+      border: 1px solid rgba(255, 255, 255, .8);
+      border-radius: 20px;
+      background: linear-gradient(160deg, rgba(255, 255, 255, .50), rgba(255, 255, 255, .20));
+      -webkit-backdrop-filter: blur(12px) saturate(160%);
+      backdrop-filter: blur(12px) saturate(160%);
+      color: #6a5636;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(110, 90, 60, .08), inset 0 1px 0 rgba(255, 255, 255, .9);
+      transition: background .2s ease, transform .2s ease, opacity .2s ease;
+    }
+
+    .mac-chat-suggestion:hover:not(:disabled) { background: rgba(255, 255, 255, .82); transform: translateY(-1px); }
+    .mac-chat-suggestion:disabled { opacity: .45; cursor: not-allowed; }
+
+    /* --- input pill --- */
+    .mac-chat-form {
+      flex: 0 0 auto;
+      margin: 0 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px 8px 20px;
+      border-radius: 22px;
+      background: linear-gradient(160deg, rgba(255, 255, 255, .56), rgba(255, 255, 255, .26));
+      -webkit-backdrop-filter: blur(16px) saturate(170%);
+      backdrop-filter: blur(16px) saturate(170%);
+      border: 1px solid rgba(255, 255, 255, .85);
+      box-shadow: 0 10px 26px rgba(110, 90, 60, .12), inset 0 1.5px 0 rgba(255, 255, 255, .95), inset 0 -1px 0 rgba(255, 255, 255, .4);
+      transition: box-shadow .2s ease, background .2s ease;
+    }
+
+    .mac-chat-form:focus-within {
+      background: linear-gradient(160deg, rgba(255, 255, 255, .86), rgba(255, 255, 255, .55));
+      box-shadow: 0 10px 26px rgba(110, 90, 60, .14), inset 0 1.5px 0 rgba(255, 255, 255, .95), 0 0 0 3px rgba(140, 112, 66, .16);
+    }
+
+    .mac-chat-input {
+      flex: 1;
+      min-width: 0;
+      height: 40px;
+      max-height: 96px;
+      resize: none;
+      padding: 10px 0;
+      border: 0;
+      outline: none;
+      background: transparent;
+      color: #2b2520;
+      font: 14px/1.5 var(--font-arch);
+    }
+
+    .mac-chat-input::placeholder { color: #8f857a; }
+    .mac-chat-input:disabled { cursor: not-allowed; }
+    .mac-chat-input:disabled::placeholder { color: #a99e90; font-size: 12.5px; }
+
+    .mac-chat-send {
+      flex-shrink: 0;
+      width: 40px;
+      height: 40px;
+      display: grid;
+      place-items: center;
+      border: 0;
+      border-radius: 15px;
+      background: transparent;
+      color: #6f655a;
+      cursor: pointer;
+      transition: color .2s ease, background .2s ease, transform .2s ease;
+    }
+
+    .mac-chat-send:hover:not(:disabled) { color: #2b2520; background: rgba(140, 112, 66, .12); }
+    .mac-chat-send:active:not(:disabled) { transform: scale(.94); }
+    .mac-chat-send:disabled { opacity: .4; cursor: not-allowed; }
+    .mac-chat-send svg { width: 22px; height: 22px; }
+
+    /* 뒤가 비치는 만큼 글자 가독성 보강 */
+    .mac-chat-brand-text strong,
+    .mac-chat-status,
+    .mac-chat-line {
+      text-shadow: 0 0 8px rgba(255, 255, 255, .85), 0 1px 2px rgba(255, 255, 255, .6);
+    }
+
+    @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+      .mac-chat-panel { background: linear-gradient(180deg, #f8f3ea 0%, #efe6d8 100%); }
+      .mac-chat-message { background: rgba(255, 255, 255, .9); }
+    }
+
+    @media (prefers-reduced-transparency: reduce) {
+      .mac-chat-panel { background: linear-gradient(180deg, #f8f3ea 0%, #efe6d8 100%); -webkit-backdrop-filter: none; backdrop-filter: none; }
+      .mac-chat-panel::before, .mac-chat-panel::after { display: none; }
+    }
+
+    @media (max-width: 600px) {
+      .mac-chat-panel {
+        right: 12px;
+        bottom: 12px;
+        width: calc(100vw - 24px);
+        height: min(600px, calc(100dvh - 24px));
+        border-radius: 26px;
+      }
+      .mac-chat-header { padding: 18px 16px 12px 20px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .mac-chat-panel, .mac-chat-close, .mac-chat-suggestion, .mac-chat-send { transition: none; }
+      .mac-chat-panel::before { animation: none; }
+    }
+
+    /* ---------- Your Memory Statement : mic + waveform (idle / listening / speaking / stopping) ---------- */
+    .memory-field {
+      position: relative;
+    }
+
+    .memory-field .input-strong {
+      padding-right: 124px;
+      text-overflow: ellipsis;
+    }
+
+    .mic-cluster {
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-52%);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* 파형: 막대 높이는 JS가 실제 입력 음량으로 구동 (transform: scaleY) */
+    .mic-wave {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      height: 24px;
+    }
+
+    .mic-wave i {
+      display: block;
+      width: 2.5px;
+      border-radius: 2px;
+      background: var(--gold-primary);
+      opacity: .32;
+      transform: scaleY(.6);
+      transform-origin: center;
+      will-change: transform;
+      transition: opacity .3s ease;
+    }
+
+    .mic-wave i:nth-child(1) { height: 6px; }
+    .mic-wave i:nth-child(2) { height: 12px; }
+    .mic-wave i:nth-child(3) { height: 8px; }
+    .mic-wave i:nth-child(4) { height: 18px; }
+    .mic-wave i:nth-child(5) { height: 10px; }
+    .mic-wave i:nth-child(6) { height: 14px; }
+    .mic-wave i:nth-child(7) { height: 7px; }
+
+    .mic-cluster[data-state="listening"] .mic-wave i { opacity: .55; }
+    .mic-cluster[data-state="speaking"] .mic-wave i { opacity: 1; }
+    .mic-cluster[data-state="stopping"] .mic-wave i { opacity: .2; }
+
+    .mic-btn {
+      --level: 0;
+      appearance: none;
+      -webkit-appearance: none;
+      position: relative;
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      border: 0;
+      border-radius: 12px;
+      background: transparent;
+      color: var(--gold-primary);
+      cursor: pointer;
+      transition: transform .25s cubic-bezier(.2, .8, .2, 1);
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .mic-btn svg.mic-retro {
+      width: 21px;
+      height: 24px;
+      display: block;
+      overflow: visible;
+    }
+
+    /* 안테나 램프: 마이크 헤드 안의 작은 동그라미 (SVG 그룹) */
+    .mic-lamp {
+      --lamp-core: #d9cfbb;
+      --lamp-ring: #c7ac76;
+      --lamp-glow: rgba(61, 220, 132, 0);
+    }
+
+    .mic-lamp-glow {
+      fill: var(--lamp-glow);
+      filter: blur(1.1px);
+      transform-box: fill-box;
+      transform-origin: center;
+      transition: fill .5s ease;
+    }
+
+    .mic-lamp-bezel {
+      fill: var(--slot);
+      opacity: .92;
+    }
+
+    .mic-lamp-ring {
+      stroke: var(--lamp-ring);
+      transition: stroke .4s ease;
+    }
+
+    .mic-lamp-core {
+      fill: var(--lamp-core);
+      transition: fill .5s ease;
+    }
+
+    .mic-lamp-spark {
+      fill: #ffffff;
+      opacity: .5;
+      transition: opacity .5s ease;
+    }
+
+    /* listening: 누르면 초록빛이 은은하게 번져 나옴 */
+    .mic-btn[data-state="listening"] .mic-lamp,
+    .mic-btn[data-state="speaking"] .mic-lamp {
+      --lamp-core: #2fcf79;
+      --lamp-glow: rgba(61, 220, 132, .6);
+      --lamp-ring: #7fe0ad;
+    }
+
+    .mic-btn[data-state="listening"] .mic-lamp-glow {
+      animation: micLampBreath 2.6s ease-in-out infinite;
+    }
+
+    .mic-btn[data-state="listening"] .mic-lamp-spark,
+    .mic-btn[data-state="speaking"] .mic-lamp-spark {
+      opacity: .9;
+    }
+
+    /* speaking: 실제 음량에 맞춰 램프 빛이 살짝 커짐 */
+    .mic-btn[data-state="speaking"] .mic-lamp-glow {
+      transform: scale(calc(1 + var(--level) * .5));
+    }
+
+    /* stopping: 빨간불 */
+    .mic-btn[data-state="stopping"] .mic-lamp {
+      --lamp-core: #ee5a50;
+      --lamp-glow: rgba(238, 90, 80, .55);
+      --lamp-ring: #f19189;
+    }
+
+    @keyframes micLampBreath {
+      0%, 100% { opacity: .55; transform: scale(.9); }
+      50% { opacity: 1; transform: scale(1.15); }
+    }
+
+    /* 레트로 크롬 마이크 색 */
+    .mic-retro {
+      --chrome-hi: #fffaf0;
+      --chrome-mid: #d6bc86;
+      --chrome-lo: #8c7042;
+      --slot: #2b2520;
+      --edge: rgba(61, 55, 49, .55);
+      --gloss: rgba(255, 255, 255, .8);
+      filter: drop-shadow(0 1px 1px rgba(90, 70, 40, .22));
+    }
+
+    .mic-s-hi { stop-color: var(--chrome-hi); }
+    .mic-s-mid { stop-color: var(--chrome-mid); }
+    .mic-s-lo { stop-color: var(--chrome-lo); }
+    .mic-slot { stroke: var(--slot); }
+    .mic-gloss { stroke: var(--gloss); }
+    .mic-body { stroke: var(--edge); }
+    .mic-base { fill: var(--slot); opacity: .85; }
+
+    /* 호버: 원 없이 마이크만 살짝 떠오르며 골드 그림자가 은은히 */
+    .mic-btn[data-state="idle"]:hover {
+      transform: translateY(-1.5px);
+    }
+
+    .mic-btn[data-state="idle"]:hover .mic-retro {
+      filter: drop-shadow(0 3px 4px rgba(140, 112, 66, .35));
+    }
+
+    .mic-btn:focus-visible {
+      outline: 2px solid var(--gold-primary);
+      outline-offset: 2px;
+    }
+
+    /* speaking: 말하는 동안 그릴이 살짝 반응 (상태 표시는 헤드 안 램프로만) */
+    .mic-btn[data-state="speaking"] .mic-grille {
+      animation: micGrille .7s ease-in-out infinite;
+    }
+
+    @keyframes micGrille {
+      0%, 100% { opacity: 1; }
+      50% { opacity: .5; }
+    }
+
+    .mic-status {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+    }
+
+    @media (max-width: 480px) {
+      .memory-field .input-strong { padding-right: 104px; }
+      .mic-cluster { gap: 8px; }
+      .mic-wave i:nth-child(n+6) { display: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .mic-btn[data-state="listening"] .mic-lamp-glow,
+      .mic-btn[data-state="speaking"] .mic-grille { animation: none; }
+    }
+
+
+    /* Component-local visibility and sizing: do not depend on generic button/svg rules. */
+    #macChatTrigger {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      flex: 0 0 30px;
+      width: 30px;
+      height: 30px;
+      visibility: visible;
+      opacity: 1;
+      overflow: visible;
+      background: #9b7e4f;
+      color: #fff;
+      border: 0;
+      padding: 0;
+      z-index: 1;
+    }
+
+    #macChatTrigger .mac-chat-trigger-icon {
+      display: block;
+      width: 20px;
+      height: 22px;
+      flex: none;
+      visibility: visible;
+      opacity: 1;
+    }
+    #colorArchForm .memory-field { position:relative; min-width:0; overflow:visible; isolation:isolate; }
+    #colorArchForm #userMemory { width:100%; padding-right:132px; }
+    #colorArchForm #micCluster {
+      display:flex; visibility:visible; opacity:1; position:absolute;
+      top:50%; right:4px; transform:translateY(-50%); z-index:2;
+      align-items:center; gap:10px; pointer-events:auto;
+    }
+    #micCluster #micBtn {
+      display:inline-grid; place-items:center; position:relative;
+      flex:0 0 44px; width:44px; height:44px; min-width:44px; min-height:44px;
+      visibility:visible; opacity:1; padding:0; border:0; background:transparent;
+      color:#8c7042; overflow:visible; pointer-events:auto;
+    }
+    #micBtn svg.mic-retro { display:block; width:26px; height:31px; visibility:visible; opacity:1; }
+    @media (max-width:600px) {
+      #colorArchForm #userMemory { padding-right:112px; }
+      #colorArchForm #micCluster { gap:6px; right:0; }
+    }
+
+    #macChatPanel .mac-chat-hex-card {
+  background: linear-gradient(145deg, rgba(255, 255, 255, .58), rgba(255, 255, 255, .26));
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  backdrop-filter: blur(14px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, .78);
+  box-shadow: 0 6px 18px rgba(90, 70, 40, .10), inset 0 1px 0 rgba(255, 255, 255, .92);
+}
+#macChatPanel .mac-chat-hex-chip {
+  background: rgba(255, 255, 255, .55);
+  border-color: rgba(255, 255, 255, .8);
+}
+
+/* ===== 추억의 HEX 찾기 ===== */
+
+/* 카드: 챗봇 말풍선과 같은 유리 질감 */
+#macChatPanel .mac-chat-hex-card {
+  align-self: flex-start;
+  width: 100%;
+  max-width: 92%;
+  box-sizing: border-box;
+  padding: 14px 16px 15px;
+  border-radius: 6px 20px 20px 20px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, .62), rgba(255, 255, 255, .28));
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  backdrop-filter: blur(14px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, .8);
+  box-shadow: 0 6px 18px rgba(90, 70, 40, .10), inset 0 1px 0 rgba(255, 255, 255, .92);
+  color: #3b342c;
+  text-align: left;
+  white-space: normal;
+}
+
+/* 팔레트 띠: 4색을 하나로 이어 보여줌 */
+#macChatPanel .mac-chat-hex-strip {
+  display: flex;
+  height: 34px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .06), 0 3px 8px rgba(90, 70, 40, .12);
+}
+#macChatPanel .mac-chat-hex-strip span {
+  flex: 1 1 0;
+  min-width: 8px;
+}
+
+/* 색 목록: 박스 없이 한 줄씩 */
+#macChatPanel .mac-chat-hex-chips {
+  display: flex;
+  flex-direction: column;
+  margin-top: 8px;
+}
+
+#macChatPanel .mac-chat-hex-chip {
+  appearance: none;
+  -webkit-appearance: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin: 0;
+  padding: 9px 6px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background .18s ease;
+}
+#macChatPanel .mac-chat-hex-chip + .mac-chat-hex-chip {
+  box-shadow: inset 0 1px 0 rgba(140, 112, 66, .12);
+}
+#macChatPanel .mac-chat-hex-chip:hover {
+  background: rgba(255, 255, 255, .55);
+}
+#macChatPanel .mac-chat-hex-chip:focus-visible {
+  outline: 2px solid rgba(140, 112, 66, .6);
+  outline-offset: -2px;
+}
+
+/* 동그란 색 점 */
+#macChatPanel .mac-chat-hex-swatch {
+  flex: 0 0 18px;
+  display: block;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, .9), 0 1px 4px rgba(0, 0, 0, .2);
+}
+
+#macChatPanel .mac-chat-hex-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #3b342c;
+  overflow-wrap: anywhere;
+}
+
+#macChatPanel .mac-chat-hex-code {
+  flex: 0 0 auto;
+  min-width: 60px;
+  padding: 0;
+  text-align: right;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  font-variant-numeric: tabular-nums;
+  color: #8c7042;
+}
+
+/* 해시 + 요약: 구분선 아래 텍스트 */
+#macChatPanel .mac-chat-hex-hash {
+  display: block;
+  margin-top: 8px;
+  padding-top: 11px;
+  border-top: 1px solid rgba(140, 112, 66, .14);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .2em;
+  color: #8c7042;
+}
+
+#macChatPanel .mac-chat-hex-summary {
+  margin-top: 6px;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: #5c534c;
+}
+
+/* HEX 버튼 (is-primary / 활성 상태) */
+#macChatPanel .mac-chat-suggestion.is-primary {
+  color: #fff;
+  background: #3a3430;
+  border-color: #3a3430;
+}
+#macChatPanel .mac-chat-suggestion.is-primary:hover:not(:disabled) {
+  background: #4a423c;
+}
+#macChatPanel .mac-chat-suggestion.is-primary[aria-pressed="true"],
+#macChatPanel .mac-chat-suggestion.is-primary.is-active {
+  background: #8c7042;
+  border-color: #8c7042;
+}
+#macChatPanel .mac-chat-suggestion.is-primary:disabled {
+  opacity: .45;
+}
