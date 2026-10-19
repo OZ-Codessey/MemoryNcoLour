@@ -38,11 +38,11 @@ def is_configured() -> bool:
 
 def _headers(extra=None):
     _, key = _cfg()
-    h = {
-        "apikey": key,
-        "Authorization": f"Bearer {key}",
-        "Content-Type": "application/json",
-    }
+    h = {"apikey": key, "Content-Type": "application/json"}
+    # 예전 service_role 키(JWT, 'eyJ…')만 Authorization 에도 넣는다.
+    # 새 secret 키('sb_secret_…')는 JWT 가 아니라 apikey 헤더에만 넣어야 한다 (Supabase 안내).
+    if key and key.startswith("eyJ"):
+        h["Authorization"] = f"Bearer {key}"
     if extra:
         h.update(extra)
     return h
