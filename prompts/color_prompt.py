@@ -83,6 +83,14 @@ MaC의 핵심 원칙은 사물의 실제 표면색이 아니라, 사연에서 �
     {{"color_name": "Warm Wood", "hex": "#A0522D", "weight": 0.10, "reason": "아빠의 손과 목재 기둥이 주는 안정감"}}
   ]
 }}
+
+A purely non-objective color field abstract oil and acrylic painting on coarse textured canvas. Completely freeform, organic, irregular abstract color fields with zero recognizable objects, zero figures, and no geometric grid. 
+
+Expansive, luminous emotional fields dominating over 75% of the canvas with radiant sunflower yellows, bright warm oranges, glowing coral pinks, soft peach, and vibrant spring greens reflecting a sunny day and joyful friendship. 
+
+Scattered organically and embedded across the canvas in varied, irregular smaller patches are deep cinematic mood tones: rich velvety navy blues, deep indigos, dusky violets, and glowing turquoise teal. 
+
+Masterful application of sfumato technique softly smoking and blurring all color transitions with atmospheric gradient hazes so edges dissolve seamlessly without hard lines. Layered scumbling technique with dry-brush textured opaque strokes dragged across the coarse canvas tooth, revealing underlying color glazes, expressive tactile impasto marks, and painterly organic friction. Pure emotional abstraction, authentic fine art painting.
 """
 
 def get_analysis_messages(user_memory: str):
