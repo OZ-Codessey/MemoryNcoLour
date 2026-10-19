@@ -1,0 +1,5 @@
+words-0.1 hash=49cd986bfd3f ks=16be54733bb6
+{"words": 1888, "surfaces": 4527, "by_axis": {"emotion": 185, "memory_color": 898, "time": 148, "space": 240, "temperature": 61, "light": 99, "sensory": 158, "none": 99}, "by_mode": {"맥락": 426, "고유": 1363, "없음": 99}, "by_source": {"팀장님 규칙": 50, "기존 자료": 164, "초안": 1682, "KS 관용색": 55}, "substituted_rows": 0, "explicit_colors": 526}
+팀장님 핵심어 50개 중 코퍼스에 있음 50
+기존 자료(멘토 v4·objects) 표기 247개 중 아직 없는 것 11개:
+  기억에 남는, 또렷, 생생, 선명, 소중한, 아련, 아련하다, 어렴풋, 오래된, 잊을 수 없는, 희미
