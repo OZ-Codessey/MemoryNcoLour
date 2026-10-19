@@ -18,7 +18,7 @@ from astral.artwork import ART_VERSION, ART_SIZE, build_art_spec, build_art_prom
 from http.cookies import SimpleCookie
 
 from astral.public_art import COOKIE_NAME, deployment_config, session_owner
-from astral.art_store import ArtLimitError, open_store
+from astral.art_store import ArtLimitError, open_store, store_ready
 
 _SECRET = secrets.token_bytes(32)
 _LOCK = Lock()
@@ -39,7 +39,12 @@ def expire_cached_art(key, expires):
 def art_configuration():
     provider = os.environ.get('ASTRAL_IMAGE_PROVIDER','openai').strip().lower()
     # Vercel 에서는 공개 생성 설정(한도 저장소·서명 키)이 모두 갖춰졌을 때만 켠다 (fail-closed)
-    public_ready = not os.environ.get('VERCEL') or deployment_config() is not None
+    # Supabase 에 한도 함수가 아직 없으면(SQL 실행 전) 꺼 둔다 — 실행되면 자동으로 켜짐
+    if os.environ.get('VERCEL'):
+        deployment = deployment_config()
+        public_ready = deployment is not None and store_ready(deployment)
+    else:
+        public_ready = True
     ready = provider in {'openai','codyssey'} and bool(image_api_key(provider)) and os.environ.get('ASTRAL_IMAGE_ENABLED') == '1' and public_ready
     return {'configured':ready, 'provider':provider, 'model':os.environ.get('ASTRAL_IMAGE_MODEL','gpt-image-2'),
             'message':('생성 버튼을 누르면 이미지 API 사용 비용이 발생합니다.' if ready else
@@ -303,7 +308,43 @@ def same_origin(headers, config):
         allowed.add(urlsplit(config['origin']).netloc)
     return netloc in allowed
 
+def art_diagnostics():
+    """전통화 버튼이 왜 꺼졌는지 조건별로 (값·키는 절대 내보내지 않고 참/거짓만). GET /api/astral_art"""
+    from astral.public_art import supabase_credentials
+    provider = os.environ.get('ASTRAL_IMAGE_PROVIDER', 'openai').strip().lower()
+    secret = os.environ.get('ASTRAL_SIGNING_SECRET', '')
+    def _int(name, default):
+        try:
+            return int(os.environ.get(name, default))
+        except ValueError:
+            return None
+    daily, total = _int('ASTRAL_IMAGE_DAILY_LIMIT', '20'), _int('ASTRAL_IMAGE_TOTAL_LIMIT', '20')
+    origin = os.environ.get('ASTRAL_PUBLIC_ORIGIN', '').rstrip('/')
+    url, key = supabase_credentials()
+    checks = {
+        'ASTRAL_IMAGE_ENABLED=1': os.environ.get('ASTRAL_IMAGE_ENABLED') == '1',
+        'ASTRAL_IMAGE_PROVIDER (openai|codyssey)': provider in {'openai', 'codyssey'},
+        'image API key': bool(image_api_key(provider)),
+        'ASTRAL_PUBLIC_IMAGE_ENABLED=1': os.environ.get('ASTRAL_PUBLIC_IMAGE_ENABLED') == '1',
+        'ASTRAL_SIGNING_SECRET >= 32': len(secret) >= 32,
+        'ASTRAL_IMAGE_DAILY_LIMIT 1~20': daily is not None and 1 <= daily <= 20,
+        'ASTRAL_IMAGE_TOTAL_LIMIT 1~1000': total is not None and 1 <= total <= 1000,
+        'ASTRAL_PUBLIC_ORIGIN (empty or https://host)': (not origin) or (origin.startswith('https://') and '/' not in origin[8:]),
+        'SUPABASE_URL + key': url.startswith('https://') and bool(key),
+    }
+    deployment = deployment_config() if os.environ.get('VERCEL') else None
+    checks['Supabase limit functions (sql/astral_art_limits.sql)'] = bool(deployment) and store_ready(deployment)
+    return {'configured': art_configuration()['configured'], 'provider': provider,
+            'model': os.environ.get('ASTRAL_IMAGE_MODEL', 'gpt-image-2'),
+            'key_source': ('CODYSSEY_API_KEY' if os.environ.get('CODYSSEY_API_KEY') else
+                           'OPENAI_API_KEY' if os.environ.get('OPENAI_API_KEY') else
+                           'ANTHROPIC_API_KEY(codyssey)' if image_api_key(provider) else 'none'),
+            'checks': checks, 'failing': [k for k, v in checks.items() if not v]}
+
 class handler(JsonHandler):
+    def do_GET(self):
+        self._send_json(200, art_diagnostics())
+
     def do_POST(self):
         try:
             length = int(self.headers.get('Content-Length',0))
