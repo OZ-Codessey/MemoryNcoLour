@@ -20,7 +20,7 @@ from .color_association import (
     EMOTION_COLOR_RULES,
     TIME_COLOR_RULES,
     SPACE_COLOR_RULES,
-    MEMORY_COLOR_RULES
+    MEMORY_QUALITY_RULES
 )
 
 def build_system_prompt() -> str:
@@ -37,7 +37,7 @@ def build_system_prompt() -> str:
         "emotion_rules": EMOTION_COLOR_RULES,
         "time_rules": TIME_COLOR_RULES,
         "space_rules": SPACE_COLOR_RULES,
-        "memory_color": MEMORY_COLOR_RULES
+        "memory_quality": MEMORY_QUALITY_RULES
     }
 
     standard_json_str = json.dumps(standard_context, ensure_ascii=False, indent=2)
@@ -67,7 +67,7 @@ MaC의 핵심 원칙은 사물의 실제 표면색이 아니라, 사연에서 �
    - weight의 합은 반드시 1.00이어야 합니다.
 
 3. color_name:
-   - "연한 빨강", "맑은 파랑", "선명한 노랑", "어두운 황갈색"처럼 기억의 정취를 담은 세련된 조형적 영문 명칭을 부여하십시오.
+   - "Sugar Pink", "May Sky", "Carousel Gold", "Warm Wood"처럼 기억의 정취를 담은 세련된 조형적 영문 명칭을 부여하십시오.
 
 4. reason:
    - 사연 속 구체적 대상이나 감정과 연결하여 1문장으로 간결하게 서술하십시오.
@@ -77,31 +77,11 @@ MaC의 핵심 원칙은 사물의 실제 표면색이 아니라, 사연에서 �
 {{
   "memory_summary": "5월 휴일의 달콤하고 따뜻한 놀이공원 기억",
   "palette": [
-  {{
-    "color_name": "연한 빨강",
-    "hex": "#FFB7C5",
-    "weight": 0.45,
-    "reason": "장면 전체를 감싸는 달콤함과 온기의 정서"
-  }},
-  {{
-    "color_name": "맑은 파랑",
-    "hex": "#87CEEB",
-    "weight": 0.30,
-    "reason": "5월 오후의 맑은 야외 공간감 및 배경"
-  }},
-  {{
-    "color_name": "선명한 노랑",
-    "hex": "#FFD700",
-    "weight": 0.15,
-    "reason": "회전목마 조명과 햇살이 자아내는 빛"
-  }},
-  {{
-    "color_name": "어두운 황갈색",
-    "hex": "#A0522D",
-    "weight": 0.10,
-    "reason": "아빠의 손과 목재 기둥이 주는 안정감"
-  }}
-]
+    {{"color_name": "Sugar Pink", "hex": "#FFB7C5", "weight": 0.45, "reason": "장면 전체를 감싸는 달콤함과 온기의 정서"}},
+    {{"color_name": "May Sky", "hex": "#87CEEB", "weight": 0.30, "reason": "5월 오후의 맑은 야외 공간감 및 배경"}},
+    {{"color_name": "Carousel Gold", "hex": "#FFD700", "weight": 0.15, "reason": "회전목마 조명과 햇살이 자아내는 빛"}},
+    {{"color_name": "Warm Wood", "hex": "#A0522D", "weight": 0.10, "reason": "아빠의 손과 목재 기둥이 주는 안정감"}}
+  ]
 }}
 """
 
