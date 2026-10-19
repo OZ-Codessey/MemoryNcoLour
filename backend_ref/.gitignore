@@ -1,0 +1,12 @@
+# 비밀 키 — 절대 커밋 금지
+.env
+.env.*
+!.env.example
+# 파이썬 부산물
+__pycache__/
+*.pyc
+# 시험용 가짜 벡터
+data/kscorpus/word_vectors.FAKE.*
+data/kscorpus/compare/
+# 로컬 시험 결과 (try_sentence.py)
+data/kscorpus/try_results.json

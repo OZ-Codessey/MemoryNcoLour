@@ -5,3 +5,6 @@ resend>=0.8.0
 astronomy-engine
 korean-lunar-calendar
 tzdata
+# v2: 그림에서 칩 측정 (services/measure.py)
+pillow>=10.0
+numpy>=1.26

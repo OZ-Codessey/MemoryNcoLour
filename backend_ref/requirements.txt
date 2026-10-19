@@ -1,0 +1,6 @@
+google-genai>=0.1.0
+python-dotenv>=1.0.0
+requests>=2.31.0
+resend>=0.8.0
+# KS 색 엔진 (services/mac_color) — 서버 실행에 필요. Voyage 는 SDK 없이 requests 로 부른다
+numpy>=1.26

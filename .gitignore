@@ -38,3 +38,6 @@ Thumbs.db
 node_modules/
 dist/
 build/
+
+# 로컬 시험 결과 (scripts/try_paint.py 등)
+out/

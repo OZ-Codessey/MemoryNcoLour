@@ -1,0 +1,11 @@
+Create one non-objective color field abstract painting that expresses the mood of a personal memory.
+- Pure abstraction: no objects, figures, faces, animals, landscapes, horizons, text, symbols or geometric shapes.
+- Use only the given palette at roughly the given area percentages: large shares as broad fields, small shares as scattered irregular patches. Mixing where two colors meet is fine; add no other hues.
+- Freeform, organic, irregular fields with no regularity in placement: no grid, rows, bands, stripes, repeated or evenly spaced shapes, symmetry, concentric or centered layout.
+- Every painting must have a fresh composition, clearly different from any previous painting.
+- Sfumato: every transition dissolves softly through thin translucent layers, never hard edges. Softness comes from paint, not digital blur.
+- Rich, evenly felt variation of hue, lightness and saturation across the canvas: light and dark passages, muted and vivid areas, and subtle tonal shifts inside each field (tints and shades of the palette colors), so the painting never looks flat.
+- Visible brushwork and paint texture inside the fields.
+- Paint fills the whole image edge to edge: no frame, border, wall, signature or watermark.
+- Not graphic design, vector art, airbrush, photography or 3D rendering.
+- Reference images, if any, show brushwork and texture only. Never copy their colors or layout.

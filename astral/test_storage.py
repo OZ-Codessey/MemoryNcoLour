@@ -12,7 +12,7 @@ def save_free_result_for_demo(result: dict) -> bool:
         return False
 
     url = os.environ.get("SUPABASE_URL", "").rstrip("/")
-    key = os.environ.get("SUPABASE_SECRET_KEY", "")
+    key = os.environ.get("SUPABASE_SECRET_KEY") or os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
     if not url.startswith("https://") or not key:
         raise RuntimeError("Supabase test storage is enabled but server variables are missing")
 

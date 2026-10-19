@@ -15,8 +15,10 @@ from urllib.parse import urlsplit
 
 from api.astral import handler as JsonHandler
 from astral.artwork import ART_VERSION, ART_SIZE, build_art_spec, build_art_prompt, build_art_explanation
-from astral.public_art import deployment_config
-from astral.art_store import ArtStore, ArtLimitError
+from http.cookies import SimpleCookie
+
+from astral.public_art import COOKIE_NAME, deployment_config, session_owner
+from astral.art_store import ArtLimitError, open_store
 
 _SECRET = secrets.token_bytes(32)
 _LOCK = Lock()
@@ -25,6 +27,8 @@ _ATTEMPTS = {}
 _CALLS = 0
 CODYSSEY_IMAGE_SIZE = '1024x1536'
 CODYSSEY_PRESENTATION_SIZE = '1152x1536'
+# Vercel 함수 응답 본문 한도(4.5MB)보다 작게: base64 PNG 가 이보다 크면 서버에서 다시 압축한다
+MAX_RESPONSE_B64 = 4_000_000
 
 def expire_cached_art(key, expires):
     with _LOCK:
@@ -34,7 +38,9 @@ def expire_cached_art(key, expires):
 
 def art_configuration():
     provider = os.environ.get('ASTRAL_IMAGE_PROVIDER','openai').strip().lower()
-    ready = provider in {'openai','codyssey'} and bool(image_api_key(provider)) and os.environ.get('ASTRAL_IMAGE_ENABLED') == '1' and not os.environ.get('VERCEL')
+    # Vercel 에서는 공개 생성 설정(한도 저장소·서명 키)이 모두 갖춰졌을 때만 켠다 (fail-closed)
+    public_ready = not os.environ.get('VERCEL') or deployment_config() is not None
+    ready = provider in {'openai','codyssey'} and bool(image_api_key(provider)) and os.environ.get('ASTRAL_IMAGE_ENABLED') == '1' and public_ready
     return {'configured':ready, 'provider':provider, 'model':os.environ.get('ASTRAL_IMAGE_MODEL','gpt-image-2'),
             'message':('생성 버튼을 누르면 이미지 API 사용 비용이 발생합니다.' if ready else
                        '전통화 생성 연결은 준비되었습니다. 운영자가 서버 API 키와 생성 설정을 완료하면 이용할 수 있습니다.')}
@@ -42,7 +48,9 @@ def art_configuration():
 def image_api_key(provider):
     # Keep existing local .env working without copying or displaying its secret.
     if provider == 'codyssey':
-        return os.environ.get('CODYSSEY_API_KEY') or os.environ.get('OPENAI_API_KEY','')
+        # 챗봇·기억 분석과 같은 Codyssey 키(ANTHROPIC_API_KEY, base 가 codyssey 일 때)도 쓸 수 있다
+        shared = os.environ.get('ANTHROPIC_API_KEY','') if 'codyssey' in os.environ.get('ANTHROPIC_BASE_URL','') else ''
+        return os.environ.get('CODYSSEY_API_KEY') or os.environ.get('OPENAI_API_KEY') or shared
     return os.environ.get('OPENAI_API_KEY','') if provider == 'openai' else ''
 
 def provider_art_prompt(spec, provider):
@@ -165,6 +173,23 @@ def validate_png(encoded, expected_size=ART_SIZE):
         raise ValueError('wrong aspect ratio')
     return encoded
 
+def fit_response_size(encoded):
+    """Vercel 응답 한도를 넘지 않게: 무손실 재압축 → 그래도 크면 256색 PNG(디더링). 크기(가로·세로)는 그대로."""
+    if len(encoded) <= MAX_RESPONSE_B64:
+        return encoded
+    import io
+    from PIL import Image
+    image = Image.open(io.BytesIO(base64.b64decode(encoded)))
+    buffer = io.BytesIO()
+    image.save(buffer, 'PNG', optimize=True)
+    smaller = base64.b64encode(buffer.getvalue()).decode()
+    if len(smaller) > MAX_RESPONSE_B64:
+        buffer = io.BytesIO()
+        image.convert('RGB').quantize(colors=256, method=Image.Quantize.MEDIANCUT,
+                                      dither=Image.Dither.FLOYDSTEINBERG).save(buffer, 'PNG', optimize=True)
+        smaller = base64.b64encode(buffer.getvalue()).decode()
+    return smaller if len(smaller) < len(encoded) else encoded
+
 def process_astral_art_request(data, local=False, generator=None, production=False, owner=None):
     global _CALLS
     if not isinstance(data,dict) or set(data) != {'ticket'}:
@@ -229,7 +254,7 @@ def process_public_art(spec, owner, generator=None):
     # Bind cached images to the anonymous session, never another visitor's ticket.
     key = hashlib.sha256((owner+provider_art_prompt(spec,config['provider'])+config['provider']+config['model']+size).encode()).hexdigest()
     try:
-        store = ArtStore(deployment['db_path'])
+        store = open_store(deployment)
         reservation, cached = store.reserve(owner, key, deployment['daily_limit'], deployment['total_limit'])
     except ArtLimitError as exc:
         return 429, {'status':'error','error':str(exc)}
@@ -239,7 +264,7 @@ def process_public_art(spec, owner, generator=None):
         return 200, cached
     result = None
     try:
-        encoded = validate_png((generator or generate_image)(spec), size)
+        encoded = fit_response_size(validate_png((generator or generate_image)(spec), size))
         result = {'status':'success','image_base64':encoded,'mime_type':'image/png','size':size,
                   'art_version':ART_VERSION,'cached':False,'visual_validation':'not_automated',
                   'explanation':build_art_explanation(spec)}
@@ -257,6 +282,27 @@ def process_public_art(spec, owner, generator=None):
             pass
     return 200, result
 
+def request_owner(headers, config):
+    """브라우저 세션 쿠키(사주 결과를 받을 때 발급) → 익명 소유자 id. 없거나 위조면 None."""
+    cookie = SimpleCookie()
+    try:
+        cookie.load(headers.get('Cookie') or '')
+    except Exception:
+        return None
+    token = cookie.get(COOKIE_NAME)
+    return session_owner(token.value, config) if token else None
+
+def same_origin(headers, config):
+    """비용이 드는 요청은 우리 사이트에서 온 것만: Origin 이 없거나, 이 서버 주소 또는 ASTRAL_PUBLIC_ORIGIN 과 같아야 함."""
+    origin = headers.get('Origin')
+    if not origin:
+        return True
+    netloc = urlsplit(origin).netloc
+    allowed = {headers.get('Host'), headers.get('X-Forwarded-Host')}
+    if config.get('origin'):
+        allowed.add(urlsplit(config['origin']).netloc)
+    return netloc in allowed
+
 class handler(JsonHandler):
     def do_POST(self):
         try:
@@ -266,7 +312,18 @@ class handler(JsonHandler):
             data=json.loads(self.rfile.read(length).decode())
             origin = self.headers.get('Origin')
             local = ipaddress.ip_address(self.client_address[0]).is_loopback and (origin is None or urlsplit(origin).netloc == self.headers.get('Host'))
-            status,payload=process_astral_art_request(data,local=local)
+            config = deployment_config() if os.environ.get('VERCEL') else None
+            if config:
+                # Vercel 공개 생성: 같은 사이트 + 세션 쿠키가 있어야 하고, 한도는 Supabase 에서 센다
+                owner = request_owner(self.headers, config)
+                if not same_origin(self.headers, config):
+                    status,payload=403,{'status':'error','error':'이 사이트에서만 전통화를 생성할 수 있습니다.'}
+                elif not owner:
+                    status,payload=401,{'status':'error','error':'세션이 만료되었습니다. 사주 결과를 다시 생성한 뒤 눌러 주세요.'}
+                else:
+                    status,payload=process_astral_art_request(data,production=True,owner=owner)
+            else:
+                status,payload=process_astral_art_request(data,local=local)
         except (ValueError,UnicodeDecodeError):
             status,payload=400,{'status':'error','error':'작품 요청 형식을 확인해 주세요.'}
         self._send_json(status,payload)

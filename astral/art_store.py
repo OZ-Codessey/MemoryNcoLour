@@ -1,5 +1,16 @@
-"""Durable, fail-closed generation budget for a single-volume Railway pilot."""
+"""Durable, fail-closed generation budget.
+
+ArtStore         : SQLite 파일 (디스크가 있는 Railway 등 단일 서버)
+SupabaseArtStore : Supabase (Vercel — 함수 인스턴스마다 디스크가 따로라 SQLite 로는 한도를 지킬 수 없음)
+open_store(config) 가 public_art.deployment_config() 의 'store' 값으로 고른다.
+두 저장소 모두 '외부 이미지 API 호출 전에' 사용량을 먼저 기록한다 (실패·시간초과도 1회로 셈).
+"""
 import json
+import os
+from collections import OrderedDict
+from threading import Lock
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 from contextlib import contextmanager
 import sqlite3
 import time
@@ -74,3 +85,69 @@ class ArtStore:
                 db.execute('''DELETE FROM images WHERE image_key NOT IN
                               (SELECT image_key FROM images ORDER BY expires DESC LIMIT 4)''')
             db.execute('UPDATE attempts SET active_until=0 WHERE id=?', (reservation,))
+
+
+# ---------------------------------------------------------------------------
+# Vercel 용: Supabase 에 한도 기록 (sql/astral_art_limits.sql 의 함수 2개 사용)
+# ---------------------------------------------------------------------------
+_LIMIT_MESSAGES = {
+    'busy': '다른 작품을 생성 중입니다. 잠시 후 다시 눌러 주세요.',
+    'service_limit': '서비스의 전통화 생성 한도에 도달했습니다. 운영자에게 문의해 주세요.',
+    'personal_limit': '오늘 이용 가능한 전통화 생성 횟수에 도달했습니다.',
+}
+# 완성된 그림은 같은 함수 인스턴스 안에서만 1시간 재사용 (DB 에 수 MB 이미지를 넣지 않음)
+_MEMORY_IMAGES = OrderedDict()
+_MEMORY_LOCK = Lock()
+
+
+class SupabaseArtStore:
+    def __init__(self, url, key, timeout=8):
+        self.url = url.rstrip('/')
+        self.timeout = timeout
+        self.headers = {'apikey': key, 'Content-Type': 'application/json', 'User-Agent': 'AstralColor/1.0'}
+        if key.startswith('eyJ'):            # 예전 service_role JWT 키만 Authorization 에도 넣는다
+            self.headers['Authorization'] = 'Bearer ' + key
+
+    def _rpc(self, name, body):
+        request = Request(f'{self.url}/rest/v1/rpc/{name}', data=json.dumps(body).encode('utf-8'),
+                          headers=self.headers, method='POST')
+        try:
+            with urlopen(request, timeout=self.timeout) as response:
+                raw = response.read()
+        except HTTPError as exc:
+            raise RuntimeError(f'Supabase rpc {name} HTTP {exc.code}') from None
+        except URLError:
+            raise RuntimeError(f'Supabase rpc {name} connection failed') from None
+        return json.loads(raw) if raw else None
+
+    def reserve(self, owner, image_key, daily_limit=20, total_limit=20):
+        now = time.time()
+        with _MEMORY_LOCK:
+            for key in [k for k, (exp, _) in _MEMORY_IMAGES.items() if exp <= now]:
+                _MEMORY_IMAGES.pop(key, None)
+            if image_key in _MEMORY_IMAGES:
+                return None, {**_MEMORY_IMAGES[image_key][1], 'cached': True}
+        result = self._rpc('astral_art_reserve', {'p_owner': owner, 'p_key': image_key,
+                                                  'p_daily': daily_limit, 'p_total': total_limit})
+        if not isinstance(result, dict):
+            raise RuntimeError('Supabase rpc astral_art_reserve: unexpected response')
+        if result.get('error'):
+            raise ArtLimitError(_LIMIT_MESSAGES.get(result['error'], _LIMIT_MESSAGES['service_limit']))
+        if not result.get('reservation'):
+            raise RuntimeError('Supabase rpc astral_art_reserve: no reservation')
+        return result['reservation'], None
+
+    def finish(self, reservation, image_key, payload=None):
+        if payload is not None:
+            with _MEMORY_LOCK:
+                _MEMORY_IMAGES[image_key] = (time.time() + 3600, payload)
+                while len(_MEMORY_IMAGES) > 4:
+                    _MEMORY_IMAGES.popitem(last=False)
+        if reservation:
+            self._rpc('astral_art_finish', {'p_id': reservation})
+
+
+def open_store(config):
+    if config.get('store') == 'supabase':
+        return SupabaseArtStore(config['supabase_url'], config['supabase_key'])
+    return ArtStore(config['db_path'])

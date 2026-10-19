@@ -1,0 +1,19 @@
+{
+  "framework": null,
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/api/analyze",
+      "destination": "/api/analyze"
+    }
+  ],
+  "functions": {
+    "api/analyze.py": {
+      "includeFiles": "{data/kscorpus/ks_colors.json,data/kscorpus/words.json,data/kscorpus/word_vectors.npz,data/kscorpus/word_vectors.meta.json,services/**,prompts/**,emailTemplate.html}",
+      "maxDuration": 60
+    }
+  }
+}

@@ -980,6 +980,172 @@
       min-height: 0;
     }
 
+    /* [v2] 결과 모달: 기억의 색면추상화 그림 */
+    .painting-box {
+      margin: 0 0 14px 0;
+    }
+    .painting-box img {
+      display: block;
+      width: 100%;
+      aspect-ratio: 4 / 5;
+      object-fit: cover;
+      border-radius: 10px;
+      background: #eeeae3;
+    }
+    .painting-note {
+      margin: 6px 0 0 0;
+      font-size: 11px;
+      color: #8c827a;
+    }
+
+    /* [v2] 결과 모달: 바깥 클릭·핸들·Esc = 아래로 내리기, X = 완전히 닫기 */
+    .mac-modal-backdrop.to-dock .mac-modal {
+      transform-origin: 50% 100%;
+      transform: translateY(46vh) scale(0.35);
+      opacity: 0;
+      filter: blur(6px);
+      transition:
+        transform 0.42s cubic-bezier(0.55, 0.055, 0.675, 0.19),
+        opacity 0.35s ease-in,
+        filter 0.35s ease-in;
+    }
+
+    .specimen-close {
+      width: 24px;
+      height: 24px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      color: #78716c;
+      background: transparent;
+      border: 1px solid #d1cbc1;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: color 0.2s ease, border-color 0.2s ease;
+    }
+
+    .specimen-close:hover {
+      color: #1c1917;
+      border-color: #8c827a;
+    }
+
+    .specimen-close svg {
+      width: 11px;
+      height: 11px;
+    }
+
+    .specimen-dock {
+      position: fixed;
+      left: 50%;
+      bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+      z-index: 9990;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      max-width: calc(100vw - 32px);
+      padding: 8px 14px 8px 8px;
+      font: inherit;
+      text-align: left;
+      color: #1c1917;
+      background: #faf8f5;
+      border: 1px solid #e2ddd3;
+      border-radius: 14px;
+      box-shadow: 0 14px 34px rgba(28, 25, 23, 0.16), 0 0 24px rgba(232, 180, 184, 0.10);
+      cursor: pointer;
+      transform: translate(-50%, 0);
+      opacity: 1;
+      transition:
+        transform 0.45s cubic-bezier(0.34, 1.3, 0.64, 1),
+        opacity 0.3s ease,
+        box-shadow 0.2s ease;
+    }
+
+    .specimen-dock[hidden] {
+      display: flex;
+      transform: translate(-50%, 140%);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .specimen-dock:hover {
+      transform: translate(-50%, -3px);
+      box-shadow: 0 18px 40px rgba(28, 25, 23, 0.20), 0 0 28px rgba(232, 180, 184, 0.14);
+    }
+
+    .specimen-dock .dock-thumb {
+      flex-shrink: 0;
+      width: 36px;
+      height: 45px;
+      border-radius: 6px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      background: #eeeae3;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.06);
+    }
+
+    .specimen-dock .dock-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .specimen-dock .dock-thumb span {
+      display: block;
+    }
+
+    .specimen-dock .dock-text {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      min-width: 0;
+    }
+
+    .specimen-dock .dock-brand {
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .specimen-dock .dock-chips {
+      display: flex;
+      gap: 3px;
+    }
+
+    .specimen-dock .dock-chips i {
+      width: 14px;
+      height: 6px;
+      border-radius: 2px;
+      display: block;
+    }
+
+    .specimen-dock .dock-hint {
+      font-size: 10.5px;
+      color: #78716c;
+      white-space: nowrap;
+    }
+
+    .specimen-dock .dock-up {
+      flex-shrink: 0;
+      width: 26px;
+      height: 26px;
+      margin-left: 2px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #78716c;
+      border: 1px solid #d1cbc1;
+      border-radius: 50%;
+    }
+
+    .specimen-dock:hover .dock-up {
+      color: #1c1917;
+      border-color: #8c827a;
+    }
+
     .summary-box {
       background: #faf8f5;
       border-left: 3px solid #1c1917;
@@ -1148,6 +1314,70 @@
 
     .control-panel button:hover {
       background: #383330;
+    }
+
+    /* [v2] 결과 모달: 화면 크기에 맞춰 커지기 (모바일은 기존 그대로)
+       · 태블릿(640px~): 한 줄 배치 그대로, 폭·글자만 조금 키움
+       · 넓은 화면(960px~): 그림은 왼쪽, 요약·비율·칩은 오른쪽 — 그림이 없으면 한 줄 배치
+       · 아주 넓은 화면(1440px~): 한 단계 더 크게 */
+    @media (min-width: 640px) {
+      .mac-modal { max-width: 500px; }
+      .specimen-header { padding: 6px 24px 16px 24px; }
+      .specimen-body { padding: 22px 24px 24px 24px; }
+      .summary-text { font-size: 13.5px; }
+      .color-name { font-size: 14px; }
+      .hex-code { font-size: 10.5px; }
+      .reason-text { font-size: 11.5px; }
+      .swatch { width: 46px; height: 46px; }
+    }
+
+    @media (min-width: 960px) and (min-height: 560px) {
+      .mac-modal { max-width: 560px; }
+      .mac-modal.has-painting { max-width: min(1000px, 88vw); }
+      .specimen-header { padding: 6px 30px 16px 30px; }
+      .specimen-header .brand { font-size: 12px; }
+      .specimen-body { padding: 26px 30px 28px 30px; }
+      .specimen-body.has-painting {
+        display: grid;
+        grid-template-columns: minmax(0, min(46%, calc((92vh - 150px) * 0.8))) minmax(0, 1fr);
+        column-gap: 32px;
+        row-gap: 0;
+        align-items: start;
+      }
+      .specimen-body.has-painting > * { grid-column: 2; }
+      .specimen-body.has-painting > .painting-box {
+        grid-column: 1;
+        grid-row: 1 / span 8;
+        margin: 0;
+        position: sticky;
+        top: 0;
+      }
+      .summary-box { padding: 14px 16px; margin-bottom: 22px; }
+      .summary-text { font-size: 15px; }
+      .spectrum-section { max-height: 60px; margin-bottom: 24px; }
+      .spectrum-label { font-size: 10px; }
+      .spectrum-bar { height: 16px; }
+      .specimen-list { gap: 11px; }
+      .specimen-card { padding: 11px 14px; gap: 14px; border-radius: 10px; }
+      .swatch { width: 54px; height: 54px; border-radius: 8px; }
+      .color-name { font-size: 15px; }
+      .hex-code { font-size: 11px; }
+      .ratio-pill { font-size: 10.5px; }
+      .reason-text { font-size: 12.5px; }
+      .control-panel { margin-top: 22px; padding-top: 16px; }
+      .control-panel span { font-size: 11.5px; }
+      .control-panel button { font-size: 12px; padding: 8px 16px; }
+    }
+
+    @media (min-width: 1440px) and (min-height: 760px) {
+      .mac-modal { max-width: 600px; }
+      .mac-modal.has-painting { max-width: 1160px; }
+      .specimen-body.has-painting { column-gap: 40px; }
+      .summary-text { font-size: 16.5px; }
+      .color-name { font-size: 16.5px; }
+      .reason-text { font-size: 13.5px; }
+      .hex-code { font-size: 12px; }
+      .swatch { width: 60px; height: 60px; }
     }
 
     /* ---------- Section 4 & 5 : Glass cards ---------- */
@@ -3093,9 +3323,21 @@
   </aside>
 
   <!-- ================= SYNTHESIZED SPECIMEN (4색 결과) MODAL ================= -->
+  <!-- [v2] 결과를 내려 두면 화면 아래에 나타나는 탭 — 누르면 결과 모달이 다시 열린다 -->
+  <button type="button" id="specimenDock" class="specimen-dock" onclick="openDynamicModal()" aria-label="결과 다시 보기" hidden>
+    <span class="dock-thumb" id="dockThumb"></span>
+    <span class="dock-text">
+      <span class="dock-brand">MaC Specimen</span>
+      <span class="dock-chips" id="dockChips"></span>
+      <span class="dock-hint">눌러서 결과 다시 보기</span>
+    </span>
+    <span class="dock-up" aria-hidden="true">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 7.5L6 4l3.5 3.5"/></svg>
+    </span>
+  </button>
   <div id="modalBackdrop" class="mac-modal-backdrop hidden" aria-hidden="true">
     <div class="mac-modal" role="dialog" aria-modal="true" aria-label="색채 표본 결과">
-      <div class="modal-close-handle-wrap" onclick="closeDynamicModal()" title="닫기">
+      <div class="modal-close-handle-wrap" onclick="minimizeDynamicModal()" title="아래로 내리기 (아래 탭을 누르면 다시 열려요)">
         <div class="modal-close-handle-bar"></div>
       </div>
       <div class="specimen-header">
@@ -3103,9 +3345,16 @@
         <span class="hash-area">
           <span class="hash-chip" id="specimenHash" hidden></span>
           <button type="button" class="hash-toggle" id="hashToggle" aria-expanded="false">코드 보기</button>
+          <button type="button" class="specimen-close" onclick="closeDynamicModal()" aria-label="결과 닫기" title="닫기">
+            <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M2 2l8 8M10 2l-8 8"/></svg>
+          </button>
         </span>
       </div>
       <div class="specimen-body">
+        <div class="painting-box" id="paintingBox" hidden>
+          <img id="specimenPainting" alt="기억의 색면추상화" />
+        </div>
+        <p class="painting-note" id="paintingNote" hidden></p>
         <div class="summary-box">
           <p class="summary-text" id="memorySummary"></p>
         </div>
@@ -3843,23 +4092,52 @@
     /* ---------- 3. 4색 결과 모달 제어 ---------- */
     const modalBackdrop = document.getElementById("modalBackdrop");
 
+    const specimenDock = document.getElementById("specimenDock");
+
     function openDynamicModal() {
       if (!modalBackdrop) return;
       playArchiveRevealSound();
-      modalBackdrop.classList.remove("hidden");
+      modalBackdrop.classList.remove("hidden", "to-dock");
       modalBackdrop.setAttribute('aria-hidden', 'false');
+      if (specimenDock) specimenDock.hidden = true;
     }
 
-    function closeDynamicModal() {
+    // 바깥 클릭·핸들·Esc: 아래 탭으로 내리기 (결과는 그대로 남음)
+    function minimizeDynamicModal() {
       if (!modalBackdrop || modalBackdrop.classList.contains("hidden")) return;
       playArchiveCloseSound();
+      modalBackdrop.classList.add("hidden", "to-dock");
+      modalBackdrop.setAttribute('aria-hidden', 'true');
+      if (specimenDock) specimenDock.hidden = false;
+    }
+
+    // X 버튼: 완전히 닫기 (아래 탭도 사라짐)
+    function closeDynamicModal() {
+      if (!modalBackdrop) return;
+      if (!modalBackdrop.classList.contains("hidden")) playArchiveCloseSound();
+      modalBackdrop.classList.remove("to-dock");
       modalBackdrop.classList.add("hidden");
       modalBackdrop.setAttribute('aria-hidden', 'true');
+      if (specimenDock) specimenDock.hidden = true;
+    }
+
+    function updateSpecimenDock(palette, painting) {
+      const thumb = document.getElementById("dockThumb");
+      const chips = document.getElementById("dockChips");
+      if (!thumb || !chips) return;
+      const swatches = palette.map(p => {
+        const w = p.weight !== undefined ? p.weight : (p.area_ratio !== undefined ? p.area_ratio : 0.25);
+        return { hex: escapeHtml(p.hex), w };
+      });
+      thumb.innerHTML = painting
+        ? `<img src="${painting}" alt="" />`
+        : swatches.map(s => `<span style="flex:${s.w};background:${s.hex}"></span>`).join("");
+      chips.innerHTML = swatches.map(s => `<i style="background:${s.hex}"></i>`).join("");
     }
 
     if (modalBackdrop) {
       modalBackdrop.addEventListener("click", (e) => {
-        if (e.target === modalBackdrop) closeDynamicModal();
+        if (e.target === modalBackdrop) minimizeDynamicModal();
       });
     }
 
@@ -4027,7 +4305,7 @@
       archModal.classList.remove('is-active');
       memoryModal.classList.remove('is-active');
       astralModal.classList.remove('is-active');
-      closeDynamicModal();
+      minimizeDynamicModal();
       closeMobileDrawer();
       closeArchiveDetailModal();
     });
@@ -4233,6 +4511,23 @@
 
       document.getElementById("memorySummary").textContent = `"${summary}"`;
 
+      // [v2] 색면추상화 그림 (없으면 숨김: 그림 생성 실패 또는 저장된 문장 재사용)
+      const paintingBox = document.getElementById("paintingBox");
+      const paintingNote = document.getElementById("paintingNote");
+      document.querySelector("#modalBackdrop .mac-modal").classList.toggle("has-painting", !!result.painting);
+      document.querySelector("#modalBackdrop .specimen-body").classList.toggle("has-painting", !!result.painting);
+      if (result.painting) {
+        document.getElementById("specimenPainting").src = result.painting;
+        paintingBox.hidden = false;
+        paintingNote.hidden = true;
+      } else {
+        paintingBox.hidden = true;
+        paintingNote.hidden = !result.paint_error;
+        paintingNote.textContent = result.paint_error
+          ? "그림 생성이 잠시 혼잡해 이번에는 색 표본만 보여드려요."
+          : "";
+      }
+
       document.getElementById("ratioLabel").textContent = palette.map(p => {
         const w = p.weight !== undefined ? p.weight : (p.area_ratio !== undefined ? p.area_ratio : 0.25);
         return `${Math.round(w * 100)}%`;
@@ -4262,6 +4557,7 @@
         `;
       }).join("");
 
+      updateSpecimenDock(palette, result.painting || "");
       openDynamicModal();
     }
 
@@ -4294,7 +4590,7 @@
 
       hideInlineNotice();
       submitBtn.disabled = true;
-      submitBtn.textContent = 'Synthesizing...';
+      submitBtn.textContent = 'Painting your memory... (약 40초)';
 
       try {
         const response = await fetch('/api/analyze', {

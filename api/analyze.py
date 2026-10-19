@@ -12,6 +12,8 @@ MaC (Memory & Color) Architecture — Vercel Serverless Pipeline Handler
 6. 4대 계층별 예외 처리 기준(400 유효성, 502 AI 재시도, HEX 정규식 검증, Non-blocking 이메일) 완비.
 7. 컨시어지 문의 폼(Concierge@mac.ai.kr) 단일 관문 라우팅 분기 처리 완비.
 8. Supabase 장기 기억 저장소 연동 (같은 문장 캐시 재사용 + 새 결과 저장).
+10. [v2] MAC_ENGINE=v2(기본): 문장 → Claude 팔레트 4~8색 → Gemini 색면추상화 → 그림에서 칩 4개 측정
+    (services/mac_pipeline.py). 응답에 painting(data URL) 추가. MAC_ENGINE=legacy 면 예전 방식(Gemini 가 4색 직접).
 9. [신규 추가] 챗봇 "추억의 HEX 찾기" 분기(type="hex_finder"):
    이메일 없이 기억 문장만으로 4색 팔레트 + 해시를 즉시 반환 (메일 발송 없음).
    분석 로직은 run_memory_analysis()로 분리해 표본 발송 경로와 공유하되,
@@ -49,9 +51,22 @@ except ImportError:
 
 # 장기 기억 저장소 (Supabase mac_results) — 환경변수 미설정 시 내부에서 자동으로 건너뜀
 try:
-    from services.mac_memory import lookup_cached, save_result
+    from services.mac_memory import lookup_cached, save_result, sentence_key
 except ImportError:
-    from mac_memory import lookup_cached, save_result
+    from mac_memory import lookup_cached, save_result, sentence_key
+
+# [v2] 팔레트 → 그림 → 칩 파이프라인. 저장소 맨 위를 import 경로에 넣어 prompts/·services/ 를 찾게 한다
+import sys as _sys
+_ROOT = str(Path(__file__).resolve().parent.parent)
+if _ROOT not in _sys.path:
+    _sys.path.insert(0, _ROOT)
+MAC_ENGINE = os.getenv("MAC_ENGINE", "v2").strip().lower()
+if MAC_ENGINE == "v2":
+    from services.mac_pipeline import PIPELINE_VERSION as V2_VERSION, run_v2
+
+# 같은 인스턴스가 살아 있는 동안 '직전 그림'을 기억해 다음 그림이 겹치지 않게 첨부한다
+# (서버리스라 인스턴스가 바뀌면 비어 있음 — 그림 저장소(Supabase Storage)를 붙이면 거기서 가져오도록 바꿀 자리)
+_LAST_PAINTING = {"jpeg": None, "composition": None}
 
 # 정규식 패턴 사전 컴파일
 EMAIL_REGEX = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
@@ -63,7 +78,7 @@ MEMORY_MAX_LEN = 2000
 
 # mac_results.pipeline_version 컬럼에 기록되는 값 (save_result의 6번째 인자).
 # 표본 발송과 HEX 찾기가 같은 값을 쓰도록 통일합니다. (result_json에 값이 있으면 그쪽이 우선)
-PIPELINE_VERSION = "legacy"
+PIPELINE_VERSION = "legacy" if MAC_ENGINE != "v2" else "v2"
 
 
 def normalize_memory(text) -> str:
@@ -211,8 +226,30 @@ def run_memory_analysis(memory: str, pipeline_version: str = PIPELINE_VERSION, s
     else:
         print("[Cache MISS]")
 
+    painting_b64, paint_error = None, None
+
+    # [v2] Claude 팔레트 → Gemini 그림 → 그림에서 칩 4개 (챗봇 HEX 찾기(save=False)는 그림 없이 빠르게)
+    if not from_cache and MAC_ENGINE == "v2":
+        try:
+            import base64 as _b64
+            v2res = run_v2(memory, sentence_key(memory), paint_enabled=save,
+                           avoid_image=_LAST_PAINTING["jpeg"],
+                           avoid_compositions=[_LAST_PAINTING["composition"]] if _LAST_PAINTING["composition"] else None)
+            palette = v2res["palette"]
+            if validate_palette_schema_and_hex(palette):
+                result_json = {"memory_summary": v2res["memory_summary"], "palette": palette,
+                               "pipeline_version": v2res["pipeline_version"], "plan": v2res["plan"],
+                               "paint_info": v2res["paint_info"], "paint_error": v2res["paint_error"]}
+                painting_b64, paint_error = v2res["painting_base64"], v2res["paint_error"]
+                if painting_b64:
+                    _LAST_PAINTING["jpeg"] = _b64.b64decode(painting_b64)
+                    _LAST_PAINTING["composition"] = (v2res["paint_info"] or {}).get("composition")
+        except Exception as v2_err:
+            print(f"[v2 Pipeline Failed]: {v2_err}")
+            traceback.print_exc()
+
     # [예외 기준 2 & 3] AI 추론/JSON 파싱 및 HEX 검증 (실패 시 최대 1회 즉시 재호출)
-    if not from_cache:
+    if not from_cache and MAC_ENGINE != "v2":
         system_prompt = build_system_prompt()
         full_prompt = f"{system_prompt}\n\n[입력된 사용자 기억 사연]\n\"{memory}\""
 
@@ -255,6 +292,8 @@ def run_memory_analysis(memory: str, pipeline_version: str = PIPELINE_VERSION, s
         "memory_summary": memory_summary,
         "specimen_hash": specimen_hash,
         "from_cache": from_cache,
+        "painting_base64": painting_b64,      # v2: 새로 그린 경우만 (저장된 문장 재사용 시 None — 그림 저장소 연결 전)
+        "paint_error": paint_error,
     }
 
 
@@ -504,6 +543,9 @@ def process_request(data: dict):
         "email_error": email_error_log,
         "cached": from_cache,
         "data": result_json,
+        # v2: 색면추상화 그림 (data URL). 그림이 실패했거나 저장된 문장 재사용이면 None
+        "painting": f"data:image/jpeg;base64,{analysis['painting_base64']}" if analysis.get("painting_base64") else None,
+        "paint_error": analysis.get("paint_error"),
     }
 
     return 200, response_payload
