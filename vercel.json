@@ -12,6 +12,9 @@
     "api/analyze.py": {
       "maxDuration": 180,
       "includeFiles": "{prompts/**,services/**,references/**,emailTemplate.html}"
+    },
+    "api/astral_art.py": {
+      "maxDuration": 200
     }
   }
 }
