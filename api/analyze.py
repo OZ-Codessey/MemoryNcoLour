@@ -65,6 +65,8 @@ if MAC_ENGINE == "v2":
     from services.mac_pipeline import PIPELINE_VERSION as V2_VERSION, run_v2
 # 칩 이름 = KS A 0011 한국어 색이름 (관용색에 가까우면 관용색이름, 아니면 계통색이름)
 from services.ks_names import apply_ks_names
+# 컨시어지 문의 기록 (Supabase concierge_inquiries)
+from services.concierge_store import save_inquiry
 
 # 같은 인스턴스가 살아 있는 동안 '직전 그림'을 기억해 다음 그림이 겹치지 않게 첨부한다
 # (서버리스라 인스턴스가 바뀌면 비어 있음 — 그림 저장소(Supabase Storage)를 붙이면 거기서 가져오도록 바꿀 자리)
@@ -307,7 +309,7 @@ def run_memory_analysis(memory: str, pipeline_version: str = PIPELINE_VERSION, s
 # ------------------------------------------------------------------------------
 def handle_concierge_inquiry(data: dict):
     """컨시어지 문의 폼 접수 처리 (AI 추론 없이 Resend로 바로 발송)"""
-    client_name = str(data.get("client_name", "익명")).strip()
+    client_name = str(data.get("client_name", "") or "익명").strip()
     client_contact = str(data.get("client_contact", "")).strip()
     subject_type = str(data.get("subject", "일반 문의")).strip()
     message = str(data.get("message", "")).strip()
@@ -315,6 +317,8 @@ def handle_concierge_inquiry(data: dict):
     # 필수 입력값 검증
     if not client_contact or not message:
         return 400, {"status": "error", "error": "회신 연락처와 문의 내용을 입력해 주세요."}
+    if len(client_name) > 60 or len(client_contact) > 120 or len(subject_type) > 60 or len(message) > 3000:
+        return 400, {"status": "error", "error": "입력이 너무 깁니다. 이름 60자, 연락처 120자, 문의 내용 3000자 이내로 적어 주세요."}
 
     # 문의 유형 텍스트 매핑 가독성 처리
     subject_map = {
@@ -324,6 +328,11 @@ def handle_concierge_inquiry(data: dict):
         "viewing": "Private Salon Viewing (프라이빗 뷰잉 세션 예약)"
     }
     subject_title = subject_map.get(subject_type, subject_type)
+
+    # 메일 HTML 에 넣을 값은 이스케이프 (입력에 HTML·링크를 넣어 관리자 메일을 꾸미는 것 방지)
+    import html as _html
+    safe_name, safe_contact = _html.escape(client_name), _html.escape(client_contact)
+    safe_subject, safe_message = _html.escape(subject_title), _html.escape(message)
 
     # 네이버웍스 메일함으로 전달될 우아한 미니멀 HTML 서식 생성
     inquiry_html = f"""
@@ -336,20 +345,20 @@ def handle_concierge_inquiry(data: dict):
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
           <tr style="border-bottom: 1px solid #f0ede8;">
             <td style="padding: 12px 0; width: 120px; font-size: 12.5px; font-weight: 700; color: #8c827a; letter-spacing: 0.1em; text-transform: uppercase;">CLIENT NAME</td>
-            <td style="padding: 12px 0; font-size: 15px; font-weight: 600; color: #1c1917;">{client_name}</td>
+            <td style="padding: 12px 0; font-size: 15px; font-weight: 600; color: #1c1917;">{safe_name}</td>
           </tr>
           <tr style="border-bottom: 1px solid #f0ede8;">
             <td style="padding: 12px 0; font-size: 12.5px; font-weight: 700; color: #8c827a; letter-spacing: 0.1em; text-transform: uppercase;">CONTACT INFO</td>
-            <td style="padding: 12px 0; font-size: 15px; font-weight: 600; color: #8c7042;">{client_contact}</td>
+            <td style="padding: 12px 0; font-size: 15px; font-weight: 600; color: #8c7042;">{safe_contact}</td>
           </tr>
           <tr style="border-bottom: 1px solid #f0ede8;">
             <td style="padding: 12px 0; font-size: 12.5px; font-weight: 700; color: #8c827a; letter-spacing: 0.1em; text-transform: uppercase;">REQUEST TYPE</td>
-            <td style="padding: 12px 0; font-size: 14px; font-weight: 600; color: #383330;">{subject_title}</td>
+            <td style="padding: 12px 0; font-size: 14px; font-weight: 600; color: #383330;">{safe_subject}</td>
           </tr>
         </table>
 
         <p style="font-size: 12px; font-weight: 700; color: #8c827a; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 8px;">PRIVATE NOTE</p>
-        <div style="background: #faf8f5; border-left: 3.5px solid #8c7042; padding: 18px 20px; border-radius: 4px; font-size: 14.5px; color: #383330; line-height: 1.8; white-space: pre-wrap;">{message}</div>
+        <div style="background: #faf8f5; border-left: 3.5px solid #8c7042; padding: 18px 20px; border-radius: 4px; font-size: 14.5px; color: #383330; line-height: 1.8; white-space: pre-wrap;">{safe_message}</div>
 
         <div style="margin-top: 36px; padding-top: 20px; border-top: 1px solid #eae6e1; font-size: 11.5px; color: #a39c94; text-align: center;">
           본 메일은 MaC 웹사이트 Color Concierge 데스크에서 실시간 자동 발송되었습니다.
@@ -358,19 +367,28 @@ def handle_concierge_inquiry(data: dict):
     </div>
     """
 
-    # Resend를 사용하여 관리자 네이버웍스 메일함(Concierge@mac.ai.kr)으로 전달
+    # 관리자 알림 메일: 받는 주소는 환경변수 CONCIERGE_NOTIFY_EMAIL (쉼표로 여러 개). 없으면 메일 없이 DB 에만 저장.
+    # (없는 주소로 보내면 반송이 쌓여 mac.ai.kr 발송 평판이 떨어지고, 사용자 표본 메일까지 스팸함으로 갈 수 있음)
+    notify_to = [a.strip() for a in os.getenv("CONCIERGE_NOTIFY_EMAIL", "").split(",") if EMAIL_REGEX.match(a.strip())]
+    email_sent = False
     try:
-        if RESEND_API_KEY:
+        if RESEND_API_KEY and notify_to:
             resend.Emails.send({
                 "from": "MaC Concierge <curator@mac.ai.kr>",
-                "to": ["Concierge@mac.ai.kr"],
-                "subject": f"[MaC Desk] {client_name}님의 프라이빗 문의",
+                "to": notify_to,
+                "subject": f"[MaC Desk] {client_name[:30]}님의 프라이빗 문의",
                 "html": inquiry_html,
             })
-        return 200, {"status": "success", "message": "문의가 성공적으로 전달되었습니다."}
+            email_sent = True
     except Exception as send_err:
         print(f"[Concierge Mail Send Error]: {send_err}")
-        return 500, {"status": "error", "error": "문의 메일 전송 중 통신 오류가 발생했습니다."}
+
+    # Supabase concierge_inquiries 에도 기록 (메일이 실패해도 문의가 남도록)
+    saved = save_inquiry(client_name, client_contact, subject_type, message, email_sent)
+
+    if email_sent or saved:
+        return 200, {"status": "success", "message": "문의가 성공적으로 전달되었습니다."}
+    return 500, {"status": "error", "error": "문의 메일 전송 중 통신 오류가 발생했습니다."}
 
 
 def handle_hex_finder(data: dict):
