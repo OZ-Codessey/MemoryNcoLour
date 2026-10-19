@@ -521,7 +521,7 @@ def process_request(data: dict):
             params = {
                 "from": "MaC <curator@mac.ai.kr>",
                 "to": [email],
-                "subject": f"MaC Chromatic Specimen [{specimen_hash}]",
+                "subject": f"MaC Chromatic Specimen · 당신의 기억이 색이 되었어요",
                 "html": rendered_html,
             }
             resend.Emails.send(params)
