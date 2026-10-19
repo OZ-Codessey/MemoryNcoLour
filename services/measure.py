@@ -17,7 +17,8 @@ MaC — 그림 → 칩 4개 (면적이 큰 순)
    다른 색이 모자라 4개가 안 되면 합쳤던 것을 다시 칩으로 살린다.
    (2026-10-20: 빗속 정류장 그림에서 회색 두 톤이 칩 2개를 차지하고 호박색 포인트가 빠짐 → 추가)
    칩 4개 → 비율은 비율은 4개 합 100% 로 다시 나눈 값(ratio)과 그림 전체 대비(share) 둘 다 준다.
-6. 칩 이름 (항상 영문 이름이 붙는다):
+6. 칩 이름: 최종 표시 이름은 KS A 0011 한국어 색이름 (services/ks_names.py — 관용색 ΔE00 ≤ 5 면 관용색이름,
+   아니면 계통색이름). 아래 규칙은 '이유(reason)'와 영문 이름(color_name_en)을 정하는 데 쓴다:
    - '가까움'은 색 계열을 고려한 거리: 유채색 칩 ↔ 무채색 계획 색(또는 반대)은 ΔE 에 HUE_PENALTY 를 더한다
    - 가장 가까운 '계획 색'(Claude 팔레트)과 ΔE ≤ NAME_DE → 그 색의 영문 이름·이유·역할을 물려받는다 (name_source=plan)
      같은 색상(색상각 차 < SAME_HUE_DH)의 유채색이면 ΔE ≤ SAME_HUE_DE 까지 물려받는다 (예: 같은 주황의 더 어두운 갈색)
@@ -36,6 +37,18 @@ import math
 
 import numpy as np
 from PIL import Image
+
+try:
+    from services.ks_names import apply_ks_names, has_batchim, ks_color_name
+except ImportError:
+    from ks_names import apply_ks_names, has_batchim, ks_color_name
+
+
+def ks_name(hx: str) -> str:
+    try:
+        return ks_color_name(hx)["name"]
+    except Exception:
+        return hx
 
 K = 8
 NEUTRAL_C = 8.0
@@ -262,11 +275,13 @@ def extract_chips(img: Image.Image, plan_palette: list[dict] | None = None, *, n
             name, reason, role, source = p["color_name"], p.get("reason"), p.get("role"), "plan"
         elif near is not None and inheritable(ci, near, near_lab):       # 더 가까운 칩이 이미 이 이름을 가져감
             name, role, source = describe_name(g["hex"]), near.get("role"), "tone"
-            reason = f"{near['color_name']} 의 더 {'밝은' if chip_lab[0] > near_lab[0] else '어두운'} 톤"
+            tone_word = "밝은" if chip_lab[0] > near_lab[0] else "어두운"
+            reason = f"{near.get('reason') or ks_name(near['hex'])} — 그림 속 조금 더 {tone_word} 톤"
         elif len(ranked) >= 2 and ranked[1][0] <= MIX_DE:
-            a, b = ranked[0][2], ranked[1][2]
+            a, b = ks_name(ranked[0][2]["hex"]), ks_name(ranked[1][2]["hex"])
             name, role, source = describe_name(g["hex"]), None, "mixed"
-            reason = f"{a['color_name']} · {b['color_name']} 가 그림 속에서 섞여 나온 색"
+            reason = (f"{a}{'과' if has_batchim(a) else '와'} {b}{'이' if has_batchim(b) else '가'} "
+                      f"그림 속에서 섞여 나온 색")
         else:
             name, reason, role, source = describe_name(g["hex"]), None, None, "described"
         chips.append({
@@ -281,13 +296,8 @@ def extract_chips(img: Image.Image, plan_palette: list[dict] | None = None, *, n
             "nearest_de": near_de,
             "inherited": source == "plan",
         })
-    # 같은 묘사 이름이 겹치면 HEX 를 붙여 구분 (드묾)
-    seen = {}
-    for c in chips:
-        seen.setdefault(c["color_name"], []).append(c)
-    for same in seen.values():
-        for c in same[1:]:
-            c["color_name"] = f"{c['color_name']} {c['hex']}"
+    # 칩 이름 = KS A 0011 한국어 색이름 (관용색 ΔE00 ≤ 5 → 관용색이름, 아니면 계통색이름). 영문은 color_name_en
+    chips = apply_ks_names(chips)
     # 반올림 오차로 ratio 합이 1 이 아니면 가장 큰 칩에서 맞춘다
     diff = round(1 - sum(c["ratio"] for c in chips), 4)
     if chips and diff:
