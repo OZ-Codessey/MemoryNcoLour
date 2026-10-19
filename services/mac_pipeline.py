@@ -34,6 +34,7 @@ import time
 from prompts import color_prompt_v2 as v2
 from prompts.paint_prompt import build_paint_request
 from services.claude_client import claude_json
+from services.ks_names import apply_ks_names
 from services.measure import extract_chips
 from services.painter import PaintError, load_references, paint
 
@@ -60,7 +61,8 @@ def make_plan(memory: str, log=print) -> dict:
 
 
 def _chip_out(c: dict) -> dict:
-    return {"color_name": c.get("color_name") or c["hex"], "hex": c["hex"],
+    return {"color_name": c.get("color_name") or c["hex"], "color_name_en": c.get("color_name_en"),
+            "ks_kind": c.get("ks_kind"), "hex": c["hex"],
             "weight": c["ratio"], "area_ratio": c["ratio"], "share_in_painting": c.get("share"),
             "reason": c.get("reason") or "", "role": c.get("role"), "name_source": c.get("name_source")}
 
@@ -69,9 +71,9 @@ def _plan_top4(plan: dict) -> list[dict]:
     """그림이 없을 때: 계획 팔레트의 면적 상위 4색 (비율은 4색 합 100%로)."""
     top = sorted(plan["palette"], key=lambda c: -c["share"])[:4]
     tot = sum(c["share"] for c in top) or 1
-    return [{"color_name": c["color_name"], "hex": c["hex"], "weight": round(c["share"] / tot, 4),
-             "area_ratio": round(c["share"] / tot, 4), "reason": c.get("reason", ""), "role": c.get("role"),
-             "name_source": "plan_only"} for c in top]
+    return apply_ks_names([{"color_name": c["color_name"], "hex": c["hex"], "weight": round(c["share"] / tot, 4),
+                            "area_ratio": round(c["share"] / tot, 4), "reason": c.get("reason", ""),
+                            "role": c.get("role"), "name_source": "plan_only"} for c in top])
 
 
 def run_v2(memory: str, sentence_key: str, *, avoid_image: bytes | None = None,

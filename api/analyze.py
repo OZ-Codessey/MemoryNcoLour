@@ -63,6 +63,8 @@ if _ROOT not in _sys.path:
 MAC_ENGINE = os.getenv("MAC_ENGINE", "v2").strip().lower()
 if MAC_ENGINE == "v2":
     from services.mac_pipeline import PIPELINE_VERSION as V2_VERSION, run_v2
+# 칩 이름 = KS A 0011 한국어 색이름 (관용색에 가까우면 관용색이름, 아니면 계통색이름)
+from services.ks_names import apply_ks_names
 
 # 같은 인스턴스가 살아 있는 동안 '직전 그림'을 기억해 다음 그림이 겹치지 않게 첨부한다
 # (서버리스라 인스턴스가 바뀌면 비어 있음 — 그림 저장소(Supabase Storage)를 붙이면 거기서 가져오도록 바꿀 자리)
@@ -271,7 +273,10 @@ def run_memory_analysis(memory: str, pipeline_version: str = PIPELINE_VERSION, s
 
     if not result_json or not palette:
         return None
-
+                
+    # KS A 0011 한국어 색이름으로 표시 (저장된 예전 결과도 같은 HEX → 같은 이름. 영문은 color_name_en)
+    palette = apply_ks_names(palette)
+    result_json["palette"] = palette
     memory_summary = result_json.get("memory_summary") or memory
 
     # 면적비 가중치 기반 고유 암호 해시(MaC-L.C.H) 산출

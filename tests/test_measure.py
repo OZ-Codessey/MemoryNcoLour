@@ -29,15 +29,15 @@ def test_near_duplicate_grey_gives_way_to_accent():
     # 회색 두 톤(ΔE≈10) + 작은 호박색 → 호박색이 칩에 들어와야 한다
     img = _img([("#3A414C", .40), ("#7B8086", .20), ("#62686F", .17), ("#A3AAAF", .19), ("#B58A55", .04)])
     chips = extract_chips(img, PLAN, seed=1)["chips"]
-    names = [c["color_name"] for c in chips]
-    assert any(c["name_source"] != "described" and "Amber" in c["color_name"] for c in chips), names
+    names = [(c["color_name"], c.get("color_name_en")) for c in chips]
+    assert any(c["name_source"] != "described" and "Amber" in (c.get("color_name_en") or "") for c in chips), names
     assert abs(sum(c["ratio"] for c in chips) - 1) < 1e-6
 
 
 def test_plan_name_used_once():
     img = _img([("#3A414C", .45), ("#7B8086", .25), ("#62686F", .30)])     # 다른 색이 없으면 회색 두 톤 모두 칩
     chips = extract_chips(img, PLAN, n=3, seed=1)["chips"]
-    names = [c["color_name"] for c in chips]
+    names = [c.get("color_name_en") or c["color_name"] for c in chips]
     assert len(set(names)) == len(names), names
     assert any(c["name_source"] == "tone" for c in chips), [c["name_source"] for c in chips]
 
