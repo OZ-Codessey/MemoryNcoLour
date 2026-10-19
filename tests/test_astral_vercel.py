@@ -119,6 +119,23 @@ def test_missing_supabase_fails_closed():
         os.environ["SUPABASE_SERVICE_ROLE_KEY"] = key
 
 
+def test_stays_off_until_sql_is_run():
+    """Supabase 에 함수가 없으면(SQL 실행 전) 버튼이 꺼지고, 생기면 켜진다."""
+    original = store_mod.SupabaseArtStore._rpc
+    def missing(self, name, body):
+        raise RuntimeError(f"Supabase rpc {name} HTTP 404")
+    try:
+        store_mod._READY.clear()
+        store_mod.SupabaseArtStore._rpc = missing
+        assert not astral_art.art_configuration()["configured"]
+        store_mod._READY.clear()                      # (실제로는 1분 뒤 다시 확인)
+        store_mod.SupabaseArtStore._rpc = original
+        assert astral_art.art_configuration()["configured"]
+    finally:
+        store_mod.SupabaseArtStore._rpc = original
+        store_mod._READY.clear()
+
+
 def test_response_fits_vercel_limit():
     big = png_b64(1024, 1536, noise=True)
     assert len(big) > astral_art.MAX_RESPONSE_B64

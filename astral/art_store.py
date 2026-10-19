@@ -147,6 +147,30 @@ class SupabaseArtStore:
             self._rpc('astral_art_finish', {'p_id': reservation})
 
 
+_READY = {}
+
+
+def store_ready(config):
+    """Supabase 에 한도 함수(sql/astral_art_limits.sql)가 준비됐는지 확인. 결과는 잠시 기억한다
+    (준비됨 10분 · 안 됨 1분). SQL 실행 전에는 False → 생성 버튼이 꺼진 채로, 실행하면 자동으로 켜진다.
+    확인 방법: 없는 id 로 astral_art_finish 호출 (아무 행도 바뀌지 않음)."""
+    if config.get('store') != 'supabase':
+        return True
+    now = time.time()
+    key = config['supabase_url']
+    hit = _READY.get(key)
+    if hit and hit[1] > now:
+        return hit[0]
+    try:
+        SupabaseArtStore(config['supabase_url'], config['supabase_key'], timeout=3)._rpc(
+            'astral_art_finish', {'p_id': '00000000-0000-0000-0000-000000000000'})
+        ok = True
+    except Exception:
+        ok = False
+    _READY[key] = (ok, now + (600 if ok else 60))
+    return ok
+
+
 def open_store(config):
     if config.get('store') == 'supabase':
         return SupabaseArtStore(config['supabase_url'], config['supabase_key'])
