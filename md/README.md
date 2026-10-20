@@ -112,7 +112,7 @@ MaC는 보이지 않는 내면의 감각과 기억을 관찰 가능한 색채로
 <br><br>
 ## Deployment URLs
 
-- **Production Service**: `https://mac.ai.kr` (또는 Vercel 배포 도메인)
+- **Production Service**: `https://mac.ai.kr`
 - **API Server (Railway)**: Railway 배포 주소 — 프론트(Vercel)와 분리 운영, `CORS_ORIGINS`에 프론트 주소를 등록합니다.
 - **GitHub Repository**: 'https://github.com/OZ-Codessey/MemoryNcoLour.git'
 
