@@ -1,3 +1,46 @@
+```
+Thanks for checking out MemoryNcoLour!
+```
+
+# 🏆 MemoryNcoLour 🥈
+
+
+> 
+> 📌 **Project Status: Archived (2026.10.28)**  
+> 본 저장소는 **"코디세이 AI Native 1기 Final Project 자유주제부문 2위 수상작"**(2026.10.28.수) 이며
+평가가 완료됨에 따라 **아카이빙(Read-Only)** 처리하였으며 본 저장소에서의 추가 개발 및 업데이트는 진행되지 않습니다.
+> 
+> * 🗓️ **팀 미션 기간:** 2026.10.06 ~ 2026.10.20  
+> * 🏛️ **시스템 설계 및 프로젝트 총괄 책임:** 김외진 (KIM OEJIN) / rainbowjjinn@gmail.com  
+
+<br> *thank you*.
+
+> 
+> 
+
+※ *코디세이 AI Native 과정은 과학기술정보통신부 주관, 정보통신기획평가원(IITP) 전담, (재)이노베이션 아카데미 수행으로 진행되는 프로젝트 기반 AI·SW 학습 과정입니다.*
+<br>
+<br>
+ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+
+
+
+<blockquote style="margin-left: 30px;">
+  <p>
+    🎵 <b>
+      <marquee behavior="scroll" direction="right" scrollamount="3" width="280px">
+        The Good Old Days
+      </marquee>
+    </b><br>
+    <audio controls preload="none">
+      <source src="./music/The%20Good%20Old%20Days.mp3" type="audio/mpeg">
+    </audio>
+  </p>
+</blockquote>
+
+
 ![놀이공원](./images/reference.png)
 # MemoryNcoLour
 ### [ Memory and Color | My and Color ] 
